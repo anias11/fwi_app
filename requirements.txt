@@ -1,0 +1,8 @@
+streamlit
+pandas
+numpy
+xarray
+geopandas
+matplotlib
+cartopy
+netCDF4

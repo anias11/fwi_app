@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import base64
+from cartopy.io import shapereader
+from matplotlib.patches import PathPatch
+from matplotlib.path import Path
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -17,9 +20,36 @@ def img_to_data_uri(path: str) -> str:
 # ==========================
 # Función de plotting
 # ==========================
+# Máscara para ocultar datos sobre el mar
+def mask_ocean(var_data, ax):
+    """
+    Aplica una máscara para ocultar datos sobre el océano.
+    """
+    import shapely.geometry as sgeom
+    
+    # Obtener geometrías de tierra
+    land_geom = list(shapereader.natural_earth(resolution='10m', 
+                                                category='physical', 
+                                                name='land').geometries())
+    
+    # Crear máscara de tierra
+    land_mask = None
+    for geom in land_geom:
+        if land_mask is None:
+            land_mask = geom
+        else:
+            land_mask = land_mask.union(geom)
+    
+    return land_mask
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 
 def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names, 
-                          title=None, fire_location=None, time_index=0):
+                          title=None, time_index=0):
     """
     Plot a variable from the dataset using Cartopy projection.
     If multiple times exist, select one via `time_index`.
@@ -29,7 +59,7 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
 
     var_data = ds[var_name]
 
-    # ---  Seleccionar una data si hi ha múltiples temps ---
+    # --- Seleccionar una data si hi ha múltiples temps ---
     if 'time' in var_data.dims:
         n_times = var_data.sizes['time']
         if time_index >= n_times:
@@ -51,19 +81,33 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
     ax.add_feature(cfeature.OCEAN, color='lightblue')
     ax.add_feature(cfeature.LAND, color='lightgray')
 
-    # --- Resta del codi de ploteig ---
+    # --- Plot especial per FWI_risk ---
     if var_name == 'FWI_risk':
+        # risk: 0 = nodata, 1..5 = categories
+        risk = var_data.astype(float)
+
+        # Mascarem zeros perquè no es pintin
+        risk = risk.where(risk != 0)
+
         colors = ['green', 'yellow', 'orange', 'red', 'darkred']
-        levels = [0, 1, 2, 3, 4, 5]
         labels = ['Bajo', 'Moderado', 'Alto', 'Muy Alto', 'Extremo']
 
-        risk = var_data.astype(int)
-        im = ax.contourf(
+        cmap = ListedColormap(colors)
+        # Franges: (0.5-1.5)->1, (1.5-2.5)->2, ..., (4.5-5.5)->5
+        bounds = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
+        norm = BoundaryNorm(bounds, cmap.N)
+
+        im = ax.pcolormesh(
             risk.longitude, risk.latitude, risk,
-            levels=levels, colors=colors, transform=ccrs.PlateCarree()
+            cmap=cmap, norm=norm,
+            transform=ccrs.PlateCarree(),
+            shading='auto'
         )
 
-        cbar = plt.colorbar(im, ax=ax, shrink=0.6, ticks=np.arange(0.5, 5.5))
+        cbar = plt.colorbar(
+            im, ax=ax, shrink=0.6,
+            ticks=[1, 2, 3, 4, 5]
+        )
         cbar.set_ticklabels(labels)
         cbar.set_label(display_name, rotation=270, labelpad=20)
 
@@ -77,7 +121,6 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
         }
         units = units_dict.get(var_name, None)
 
-        # --- Control especial per precipitació ---
         if var_name == 'rain_24h':
             data_vals = var_data.values
             if np.allclose(data_vals, 0):
@@ -88,35 +131,28 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
                         float(var_data.latitude.min()), float(var_data.latitude.max())
                     ],
                     origin='lower', cmap='Blues', vmin=0, vmax=1,
-                    transform=ccrs.PlateCarree()
+                    transform=ccrs.PlateCarree(), interpolation='nearest'
                 )
                 cbar = plt.colorbar(im, ax=ax, shrink=0.6)
                 cbar.set_ticks([0])
                 cbar.set_ticklabels(['0 mm'])
                 cbar.set_label(display_name, rotation=270, labelpad=20)
             else:
-                im = ax.contourf(
+                im = ax.pcolormesh(
                     var_data.longitude, var_data.latitude, var_data,
-                    levels=20, cmap=cmap_local, transform=ccrs.PlateCarree()
+                    cmap=cmap_local, transform=ccrs.PlateCarree(), shading='auto'
                 )
                 cbar = plt.colorbar(im, ax=ax, shrink=0.6)
                 cbar_label = f"{display_name} ({units})" if units else display_name
                 cbar.set_label(cbar_label, rotation=270, labelpad=20)
         else:
-            im = ax.contourf(
+            im = ax.pcolormesh(
                 var_data.longitude, var_data.latitude, var_data,
-                levels=20, cmap=cmap_local, transform=ccrs.PlateCarree()
+                cmap=cmap_local, transform=ccrs.PlateCarree(), shading='auto'
             )
             cbar = plt.colorbar(im, ax=ax, shrink=0.6)
             cbar_label = f"{display_name} ({units})" if units else display_name
             cbar.set_label(cbar_label, rotation=270, labelpad=20)
-
-    # Punt d'incendi
-    if fire_location is not None:
-        fire_lon, fire_lat = fire_location
-        ax.plot(fire_lon, fire_lat, marker='*', color='black', markersize=15,
-                transform=ccrs.PlateCarree(), label='Incendio')
-        ax.legend(loc='upper right')
 
     # Extensió del mapa
     lon_min = float(var_data.longitude.min())
@@ -125,8 +161,8 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
     lat_max = float(var_data.latitude.max())
     ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
 
-    # --- Gridlines i etiquetes ---
-    gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', alpha=0.5,
+    # Gridlines
+    gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', alpha=0.8,
                       linestyle='--', x_inline=False, y_inline=False)
     gl.xlocator = plt.MultipleLocator(0.25)
     gl.ylocator = plt.MultipleLocator(0.25)
@@ -135,14 +171,10 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
     gl.bottom_labels = True
     gl.left_labels = True
 
-    # --- Títol ---
+    # Títol
     if title is None:
-        if date_str:
-            title = f"{display_name} — {date_str}"
-        else:
-            title = display_name
+        title = f"{display_name} — {date_str}" if date_str else display_name
 
-    # Afegir “a les 11:00 h” si la variable és una de les principals
     if var_name in ['t2m', 'rh', 'wind10m', 'rain_24h']:
         title += " — 11:00 h"
 

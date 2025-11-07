@@ -4,6 +4,8 @@ import pandas as pd
 import streamlit as st
 import xarray as xr
 from functions import *
+from cartopy.feature import OCEAN
+
 
 # ================== CONFIG ==================
 st.set_page_config(
@@ -15,7 +17,7 @@ st.set_page_config(
 
 # ================== PATHS ===================
 logo_path = "./static/logos/TWP-circle-white.svg"
-data_path = "./data/fwi_final_agost.nc"
+data_path = "./data/agost_risk_2.nc"
 # csv_path = 
 
 #  ================== ESTILOS ===================
@@ -70,7 +72,7 @@ st.markdown(
     <div class="header-box">
       <div class="header-row">
         <img src="{logo_data_uri}" alt="TDP Logo" />
-        <h1>FWI a partir de los datos del GFS</h1>
+        <h1>FWI calculado con datos del GFS</h1>
       </div>
     </div>
     """,
@@ -155,5 +157,13 @@ fig = plot_variable_cartopy(
     variable_display_names,
     title=title
 )
+# --- Aplicar máscara de océano ---
+import matplotlib.pyplot as plt
+
+# Obtener el eje de la figura
+ax = fig.gca()
+
+# Aplicar máscara de océano
+ax.add_feature(OCEAN, zorder=10, facecolor='white', edgecolor='none', alpha=1.00)
 
 st.pyplot(fig, bbox_inches='tight')
