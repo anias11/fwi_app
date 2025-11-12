@@ -8,7 +8,9 @@ from matplotlib.path import Path
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-
+import numpy as np
+from matplotlib.colors import ListedColormap, BoundaryNorm
+# ==========================
 
 
 def img_to_data_uri(path: str) -> str:
@@ -41,12 +43,6 @@ def mask_ocean(var_data, ax):
             land_mask = land_mask.union(geom)
     
     return land_mask
-
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, BoundaryNorm
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
 
 def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names, 
                           title=None, time_index=0):
@@ -89,7 +85,7 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
         # Mascarem zeros perquè no es pintin
         risk = risk.where(risk != 0)
 
-        colors = ['green', 'yellow', 'orange', 'red', 'darkred']
+        colors = ['#a6d96a', '#ffffbf', '#fdae61', '#f46d43', '#d73027']
         labels = ['Bajo', 'Moderado', 'Alto', 'Muy Alto', 'Extremo']
 
         cmap = ListedColormap(colors)
@@ -108,8 +104,37 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
             im, ax=ax, shrink=0.6,
             ticks=[1, 2, 3, 4, 5]
         )
-        cbar.set_ticklabels(labels)
-        cbar.set_label(display_name, rotation=270, labelpad=20)
+        cbar.set_ticklabels(labels, fontfamily='Poppins')
+        cbar.set_label(display_name, rotation=270, labelpad=20, fontfamily='Poppins')
+
+    elif var_name == 'FWI_anomalies':
+        # risk: 0 = nodata, 1..5 = categories
+        anomaly = var_data.astype(float)
+
+        # Mascarem zeros perquè no es pintin
+        anomaly = anomaly.where(anomaly != 0)
+
+        colors = [ '#67a9cf', '#ffffbf', '#fdae61', '#d73027',  "#701d19",]
+        labels = ['Bajo', 'Moderado', 'Alto', 'Muy Alto', 'Extremo']
+
+        cmap = ListedColormap(colors)
+        # Franges: (0.5-1.5)->1, (1.5-2.5)->2, ..., (4.5-5.5)->5
+        bounds = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
+        norm = BoundaryNorm(bounds, cmap.N)
+
+        im = ax.pcolormesh(
+            anomaly.longitude, anomaly.latitude, anomaly,
+            cmap=cmap, norm=norm,
+            transform=ccrs.PlateCarree(),
+            shading='auto'
+        )
+
+        cbar = plt.colorbar(
+            im, ax=ax, shrink=0.6,
+            ticks=[1, 2, 3, 4, 5]
+        )
+        cbar.set_ticklabels(labels, fontfamily='Poppins')
+        cbar.set_label(display_name, rotation=270, labelpad=20, fontfamily='Poppins')
 
     else:
         # --- Unitats segons variable ---
@@ -135,8 +160,8 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
                 )
                 cbar = plt.colorbar(im, ax=ax, shrink=0.6)
                 cbar.set_ticks([0])
-                cbar.set_ticklabels(['0 mm'])
-                cbar.set_label(display_name, rotation=270, labelpad=20)
+                cbar.set_ticklabels(['0 mm'], fontfamily='Poppins')
+                cbar.set_label(display_name, rotation=270, labelpad=20, fontfamily='Poppins')
             else:
                 im = ax.pcolormesh(
                     var_data.longitude, var_data.latitude, var_data,
@@ -144,7 +169,9 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
                 )
                 cbar = plt.colorbar(im, ax=ax, shrink=0.6)
                 cbar_label = f"{display_name} ({units})" if units else display_name
-                cbar.set_label(cbar_label, rotation=270, labelpad=20)
+                cbar.set_label(cbar_label, rotation=270, labelpad=20, fontfamily='Poppins')
+                for label in cbar.ax.get_yticklabels():
+                    label.set_fontfamily('Poppins')
         else:
             im = ax.pcolormesh(
                 var_data.longitude, var_data.latitude, var_data,
@@ -152,7 +179,9 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
             )
             cbar = plt.colorbar(im, ax=ax, shrink=0.6)
             cbar_label = f"{display_name} ({units})" if units else display_name
-            cbar.set_label(cbar_label, rotation=270, labelpad=20)
+            cbar.set_label(cbar_label, rotation=270, labelpad=20, fontfamily='Poppins')
+            for label in cbar.ax.get_yticklabels():
+                label.set_fontfamily('Poppins')
 
     # Extensió del mapa
     lon_min = float(var_data.longitude.min())
@@ -170,6 +199,8 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
     gl.right_labels = False
     gl.bottom_labels = True
     gl.left_labels = True
+    gl.xlabel_style = {'fontfamily': 'Poppins'}
+    gl.ylabel_style = {'fontfamily': 'Poppins'}
 
     # Títol
     if title is None:
@@ -178,7 +209,7 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
     if var_name in ['t2m', 'rh', 'wind10m', 'rain_24h']:
         title += " — 11:00 h"
 
-    ax.set_title(title, fontsize=14)
+    ax.set_title(title, fontsize=14, fontfamily='Poppins')
 
     plt.tight_layout()
     return fig

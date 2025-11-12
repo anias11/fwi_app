@@ -3,6 +3,7 @@ import geopandas as gpd
 import pandas as pd
 import streamlit as st
 import xarray as xr
+import matplotlib.pyplot as plt
 from functions import *
 from cartopy.feature import OCEAN
 
@@ -17,7 +18,7 @@ st.set_page_config(
 
 # ================== PATHS ===================
 logo_path = "./static/logos/TWP-circle-white.svg"
-data_path = "./data/agost_risk_2.nc"
+data_path = "./data/ds_forecast.nc"
 # csv_path = 
 
 #  ================== ESTILOS ===================
@@ -72,7 +73,10 @@ st.markdown(
     <div class="header-box">
       <div class="header-row">
         <img src="{logo_data_uri}" alt="TDP Logo" />
-        <h1>FWI calculado con datos del GFS</h1>
+        <div>
+          <h1 style="font-family: 'PoppinsLocal', 'Poppins', sans-serif; font-weight: 700; margin: 0;">Componentes, índices y clasificación de riesgo FWI</h1>
+          <p style="font-family: 'PoppinsLocal', 'Poppins', sans-serif; font-size: 2vh; color: #fff; margin: 0; opacity: 0.9;">Estimación del riesgo de incendios calculada con el pronóstico meteorológico GFS del 31 de julio del 2025</p>
+        </div>
       </div>
     </div>
     """,
@@ -86,6 +90,20 @@ ds = xr.open_dataset(data_path)
 
 # --- Variables disponibles ---
 variables = list(ds.data_vars)
+
+# --- Estilo para los selectbox con Poppins ---
+st.markdown("""
+<style>
+/* Aplicar Poppins a todos los selectbox */
+div[data-baseweb="select"] > div,
+div[data-baseweb="select"] span,
+div[data-baseweb="select"] input,
+.stSelectbox label,
+.stSelectbox div {
+    font-family: 'PoppinsLocal', 'Poppins', sans-serif !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # --- Coord temporal ---
 if "time" in ds.coords:
@@ -108,6 +126,7 @@ variable_display_names = {
     'wind10m': 'Velocidad del Viento',
     'rain_24h': 'Precipitación',
     'FWI_risk': 'Riesgo de Incendio',
+    'FWI_anomalies': 'Anomalías del FWI',
     'FFMC': 'FFMC',
     'DMC': 'DMC',
     'DC': 'DC',
@@ -127,6 +146,7 @@ variable_cmaps = {
     'DC': 'YlOrBr',
     'ISI': 'OrRd',
     'BUI': 'YlOrBr',
+    'FWI_anomalies': None,
     'FWI_risk': None  # mapa discret
 }
 
@@ -135,7 +155,7 @@ display_variables = [variable_display_names.get(v, v) for v in variables]
 display_to_original = {display_variables[i]: variables[i] for i in range(len(variables))}
 
 # --- Selector de variable ---
-default_label = 'Riesgo de Incendio' if 'FWI_risk_class' in variables else display_variables[0]
+default_label = 'Riesgo de Incendio' if 'FWI_risk' in variables else display_variables[0]
 selected_label = st.selectbox(
     "Selecciona variable:",
     display_variables,
@@ -158,8 +178,6 @@ fig = plot_variable_cartopy(
     title=title
 )
 # --- Aplicar máscara de océano ---
-import matplotlib.pyplot as plt
-
 # Obtener el eje de la figura
 ax = fig.gca()
 
