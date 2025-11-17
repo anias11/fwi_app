@@ -127,12 +127,12 @@ variable_display_names = {
     'rain_24h': 'Precipitación',
     'FWI_risk': 'Riesgo de Incendio',
     'FWI_anomalies': 'Anomalías del FWI',
-    'FFMC': 'FFMC',
-    'DMC': 'DMC',
-    'DC': 'DC',
-    'ISI': 'ISI',
-    'BUI': 'BUI',
-    'FWI': 'FWI',
+    'FFMC': 'FFMC: Sequedad del combustible fino',
+    'DMC': 'DMC: Sequedad de capas orgánicas medias',
+    'DC': 'DC: Sequedad profunda del suelo',
+    'ISI': 'ISI: Velocidad inicial potencial de propagación',
+    'BUI': 'BUI: Cantidad total de combustible disponible',
+    'FWI': 'FWI: Intensidad potencial del incendio',
 }
 
 variable_cmaps = {

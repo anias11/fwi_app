@@ -85,12 +85,19 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
         # Mascarem zeros perquè no es pintin
         risk = risk.where(risk != 0)
 
-        colors = ['#a6d96a', '#ffffbf', '#fdae61', '#f46d43', '#d73027']
-        labels = ['Bajo', 'Moderado', 'Alto', 'Muy Alto', 'Extremo']
+        colors = [
+            '#66bd63',  # Muy bajo → verde más claro-intenso
+            '#a6d96a',  # Bajo → verde suave
+            '#fff2a0',  # Moderado → amarillo suave
+            '#fdae61',  # Alto → naranja claro
+            '#f46d43',  # Muy Alto → naranja-rojo
+            '#d73027',  # Extremo → rojo fuerte
+            ]
+        labels = ['Muy bajo', 'Bajo', 'Moderado', 'Alto', 'Muy Alto', 'Extremo']
 
         cmap = ListedColormap(colors)
-        # Franges: (0.5-1.5)->1, (1.5-2.5)->2, ..., (4.5-5.5)->5
-        bounds = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
+        # Franges: (0.5-1.5)->1, (1.5-2.5)->2, ..., (5.5-6.5)->6
+        bounds = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5]
         norm = BoundaryNorm(bounds, cmap.N)
 
         im = ax.pcolormesh(
@@ -102,7 +109,7 @@ def plot_variable_cartopy(ds, var_name, variable_cmaps, variable_display_names,
 
         cbar = plt.colorbar(
             im, ax=ax, shrink=0.6,
-            ticks=[1, 2, 3, 4, 5]
+            ticks=[1, 2, 3, 4, 5, 6]
         )
         cbar.set_ticklabels(labels, fontfamily='Poppins')
         cbar.set_label(display_name, rotation=270, labelpad=20, fontfamily='Poppins')
